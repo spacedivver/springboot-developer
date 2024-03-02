@@ -3,6 +3,7 @@ package me.seonwoo.springbootdeveloper.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import me.seonwoo.springbootdeveloper.domain.Article;
 import me.seonwoo.springbootdeveloper.dto.AddArticleRequest;
+import me.seonwoo.springbootdeveloper.dto.UpdateArticleRequest;
 import me.seonwoo.springbootdeveloper.repository.BlogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,8 +20,8 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest // 테스트용 애플리케이션 컨텍스트
@@ -50,8 +51,8 @@ class BlogApiControllerTest {
     @Test
     public void addArticle() throws Exception{
 
-        //given
-        final String url="/api/ariticles";
+        //given, 블로그 글 추가에 필요한 요청 객체 생성
+        final String url="/api/articles";
         final String title="title";
         final String content="content";
         final AddArticleRequest userRequest=new AddArticleRequest(title, content);
@@ -59,13 +60,13 @@ class BlogApiControllerTest {
         // 객체 JSON으로 직렬화
         final String requestBody=objectMapper.writeValueAsString(userRequest);
 
-        //when
+        //when, 블로그 글 추가 API 요청
         // 설정한 내용을 바탕으로 요청 전송
         ResultActions result=mockMvc.perform(post(url)
                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                 .content(requestBody));
 
-        //then
+        //then, 응답 코드가 201 Created인지 확인, 블로그 전체 크기 1인지 확인, 실제 저장 데이터와 요청 값 비교
         result.andExpect(status().isCreated());
 
         List<Article> articles = blogRepository.findAll();
@@ -73,5 +74,107 @@ class BlogApiControllerTest {
         assertThat(articles.size()).isEqualTo(1); // 크기가 1인지 검증
         assertThat(articles.get(0).getTitle()).isEqualTo(title);
         assertThat(articles.get(0).getContent()).isEqualTo(content);
+    }
+
+    @DisplayName("findAllArticles: 블로그 글 목록 조회에 성공한다.")
+    @Test
+    public void findAllArticles() throws Exception {
+        // given, 블로그 글 저장
+        final String url = "/api/articles";
+        final String title = "title";
+        final String content = "content";
+
+        blogRepository.save(Article.builder()
+                .title(title)
+                .content(content)
+                .build());
+
+        // when, 목록 조회 API 호출
+        final ResultActions resultActions = mockMvc.perform(get(url)
+                .accept(MediaType.APPLICATION_JSON));
+
+        // then, 응답 코드가 200 OK이고 반환값 중 0번재 요소의 content와 title이 저장된 값과 같은지 확인
+        resultActions
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].content").value(content))
+                .andExpect(jsonPath("$[0].title").value(title));
+    }
+
+    @DisplayName("findArticle: 블로그 글 조회에 성공한다.")
+    @Test
+    public void findArticle() throws Exception {
+        // given, 블로그 글 저장
+        final String url = "/api/articles/{id}";
+        final String title = "title";
+        final String content = "content";
+
+        Article savedArticle = blogRepository.save(Article.builder()
+                .title(title)
+                .content(content)
+                .build());
+
+        // when, 저장한 블로그 글의 id값으로 API 호출
+        final ResultActions resultActions = mockMvc.perform(get(url, savedArticle.getId()));
+
+        // then, 응답 코드가 200 OK이고 반환받은 content와 title이 저장 값과 같은지 확인
+        resultActions
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value(content))
+                .andExpect(jsonPath("$.title").value(title));
+    }
+
+    @DisplayName("deleteArticle: 블로그 글 삭제에 성공한다.")
+    @Test
+    public void deleteArticle() throws Exception {
+        // given, 블로그 글 저장
+        final String url = "/api/articles/{id}";
+        final String title = "title";
+        final String content = "content";
+
+        Article savedArticle = blogRepository.save(Article.builder()
+                .title(title)
+                .content(content)
+                .build());
+
+        // when, 저장한 블로그 글의 id값으로 삭제 API 호출
+        mockMvc.perform(delete(url, savedArticle.getId()))
+                .andExpect(status().isOk());
+
+        // then, 응답 코드가 200 OK이고 블로그 글 리스트를 전체 조회하여 조회한 배열 크기가 0인지 확인
+        List<Article> articles = blogRepository.findAll();
+
+        assertThat(articles).isEmpty();
+    }
+
+    @DisplayName("updateArticle: 블로그 글 수정에 성공한다.")
+    @Test
+    public void updateArticle() throws Exception {
+        // given, 블로그 글 저장 후 블로그 글 수정에 필요한 요청 객체를 생성
+        final String url = "/api/articles/{id}";
+        final String title = "title";
+        final String content = "content";
+
+        Article savedArticle = blogRepository.save(Article.builder()
+                .title(title)
+                .content(content)
+                .build());
+
+        final String newTitle = "new title";
+        final String newContent = "new content";
+
+        UpdateArticleRequest request = new UpdateArticleRequest(newTitle, newContent);
+
+        // when, UPDATE API로 수정 요청 보냄, 요청 타입은 JSON이고 given 절에서 미리 만들어둔 객체를 요청 본문에 함께 전송
+        ResultActions result = mockMvc.perform(put(url, savedArticle.getId())
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(objectMapper.writeValueAsString(request)));
+
+        // then, 응답 코드가 200 OK인지 확인, 블로그 글 id로 조회한 후 값이 수정되었는지 확인
+        result.andExpect(status().isOk());
+
+        Article article = blogRepository.findById(savedArticle.getId()).get();
+
+        assertThat(article.getTitle()).isEqualTo(newTitle);
+        assertThat(article.getContent()).isEqualTo(newContent);
     }
 }
