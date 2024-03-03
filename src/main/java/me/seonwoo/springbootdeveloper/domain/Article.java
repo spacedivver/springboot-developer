@@ -4,6 +4,10 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+
+import java.time.LocalDateTime;
 
 @Getter
 @NoArgsConstructor
@@ -32,4 +36,13 @@ public class Article {
         this.title = title;
         this.content = content;
     }
+
+    // 엔티티 생성 시간, 수정 시간 추가, 글이 언제 생성되었는지
+    @CreatedDate // 엔티티가 생성될 때 생성 시간 저장
+    @Column(name = "created_at") // 생성 시간을 created_at 컬럼에 저장
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate // 엔티티가 수정될 때 수정 시간 저장
+    @Column(name = "updated_at") // 수정되 시간을 updated_at 컬럼에 저장
+    private LocalDateTime updatedAt;
 }

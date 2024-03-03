@@ -23,6 +23,8 @@ dependencies {
     compileOnly 'org.projectlombok:lombok' // 롬북
     annotationProcessor 'org.projectlombok:lombok'
 
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
 }
 
 test {
